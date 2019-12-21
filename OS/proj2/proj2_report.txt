@@ -1,0 +1,25 @@
+//Haoyue Cui(hac113)
+
+I have 4 semaphores and a mutex and an integer visitors(number of tenants) for project2.  tn_arrives, apt_open and apt_empty are initialized to 0 and ag_allow_in and mutex are set to 1 at first. Visitors are set to 0. 
+
+TenantArrives()
+In this function, I first up(tn_arrives), and then down(apt_open) and increment the visitors by 1 protected by mutex. The up(tn_arrives) will make sure that the agent will open the apartment only if there exist at least one tenant and one agent. If the tenant arrives first, it will up(tn_arrives) and block at down(apt_open). If the agent arrives first, up(tn_arrives) in tenantArrives() will let agentArrives() keep going so there is no deadlock.
+
+AgentArrives()
+In this function, I down(ag_allow_in) and down(tn_arrives). The first agent comes in and after down(ag_allow_in), it becomes 0 and keeps going since this semaphore is initialized to 1 at the beginning. And it will down(tn_arrives). If an agent arrives before a tenant, since tn_arrives is 0, it will block at this line. Until a tenant arrives and up(tn_arrives) will the function agentArrives() keep going. If the tenant arrives first, this function will not block when the first agent arrives. But then if there is another agent arriving, this agent will be blocked at down(ag_allow_in). 
+
+viewApt()
+tenants will sleep 2 seconds for viewing the apartment. After the agent opens the apartment and after the up(apt_open) is upped ten times, the previously locked down(apt_open) in tenantArrives() can keep going. After that I just simply let the tenants view the apartment for 2 seconds by using sleep(2). Then this function ends and the next function tenantLeaves() is called. 
+
+openApt()
+First, I up(apt_open) ten times, and down(apt_empty). Since the apartment allows ten tenants at once, I will up(apt_open) ten times. Previously tenantArrives() is block at down(apt_open) and at here I up ten times so that at most ten tenants would viewApt(). If there are more than 10 tenants arrive, apt_open value will be smaller than 0 and for the next time, the tenants arrive but haven’t views apartment would viewApt() after another agent openApt() and continue up(apt_open) for ten times. If there are less than ten tenants, apt_open will be greater than 0 and I set it back to 0 in agentLeaves(). And then I down(apt_empty) and since it is 0 before, now it is blocked here, waiting for all tenants leave apartment. 
+
+tenantLeaves()
+When the tenant leaves, I decrease the number of visitors and if there is no visitor anymore, up(apt_empty) while those are protected by the mutex. After this, I down(tn_arrives). When tenants leave, the decrease of visitors will give the condition to check whether the apartment is empty. If it is empty, up(apt_empty) so that openApt() function could finish and call agentLeaves(). This can ensure that agent will leave after all tenants left. Down(tn_arrives) is matching up with up(tn_arrives) in tenantArrives(). 
+
+agentLeaves()
+I check if apt_open->value > 0, if it is, I set it back to 0 and this is protected by mutex. Then up(ag_allow_in) and up(tn_arrives). If there are less than 10 tenants arrived and I up(apt_open) ten time, this value should set to 0. If there are more than 10 tenants, the first ten tenants would viewApt() while the others are waiting. The apt_open value should not be changed since there are still tenants waiting to viewApt(). This will block until in openApt(), up(apt_open) ten times will allow the next ten people viewApt(). And up(ag_allow_in) will allow the next agent arrived keeps going for opening apartment. Up(tn_arrives) to match up with the down(tn_arrives) in agentArrives(). 
+
+This project is starvation free. After each tenant and each agent finish their processes, the process exits instead of fork bomb. And the process has no deadlock. A process is in starvation when it is waiting for a resource that is continuously given to other processes. But since the resources in my project are protected all by semaphores, and the process does not have priority, so it will not starve.
+
+
